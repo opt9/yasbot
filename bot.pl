@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-use Web::Scraper;
+use LWP::Simple;
 use Encode;
 use Encode::Alias;
 use encoding 'utf8';
@@ -128,32 +128,21 @@ sub irc_dcc_done {
 
   my $irc = $_[SENDER]->get_heap();
 
-#   my $paste = WWW::Pastebin::PastebinCom::Create->new;
-#   open(DATA, $file) || die ("==> Can't open file: $file\n");
-#   my @contents=<DATA>;
-#   close(DATA);
-#   $paste->paste(text => "@contents",
-#                 format => 'perl',
-#                 poster => "$nick",
-#                 expiry => 'm',
-#                ) or die "Error: " . $paste->error;
-#   $irc->yield(privmsg => $channel=> $nick => "Your paste can be found on $paste\n");
-
   return;
 }
 
 sub irc_urifind_uri {
   my ($who, $channel, $url, $obj, $msg) = @_[ARG0 .. ARG4];
 
-  my $html=scraper {
-    process 'title', title=>'TEXT';
-  };
-  my $data=$html->scrape(URI->new($url));
-#  return 0 unless $data->{title};
-  return unless $data->{title};
-  my $title = $data->{title};
-  $title = encode('cp949', $title);
-  $irc->yield(notice => $channel => $title);
+  my $ua=LWP::UserAgent->new;
+  $ua->agent("Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1");
+  
+  my $response = $ua->get($url);
+  if ($response->is_success) {
+    my $title = $response->header('Title');
+    $title = encode('cp949', $title);
+    $irc->yield(notice => $channel => $title);
+  } 
 
   return;
 }
