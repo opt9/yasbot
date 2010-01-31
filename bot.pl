@@ -7,9 +7,13 @@ use LWP::Simple;
 use Encode;
 use Encode::Alias;
 use encoding 'utf8';
+use Data::Dumper;
 
-use POE qw(Component::IRC Component::IRC::Plugin::URI::Find Component::IRC::Plugin::Google::Calculator);
-use WWW::Pastebin::PastebinCom::Create;
+use POE qw(
+Component::IRC 
+Component::IRC::Plugin::URI::Find 
+Component::IRC::Plugin::Google::Calculator 
+);
 
 define_alias( qr/65001/ => '"utf-8"' );
 define_alias( qr/(?:x-)?uhc$/i => '"cp949"');
@@ -18,22 +22,23 @@ define_alias( qr/ks_c_5601-1987$/i     => '"cp949"');
 
 binmode STDOUT, ":utf8";
 
-my $nickname = 'toad';
-my $ircname = 'toad';
-my $username = 'toad';
-my $alias = 'frog';
+use constant NICK => 'toad';
+use constant IRCNAME => 'toad';
+use constant USERNAME => 'toad';
+use constant ALIAS => 'frog';
+
 my $server = 'irc.hanirc.org';
-my @channels = ('#security');
-#my @channels = ('#test');
 my $naver_map_url = 'http://map.naver.com/?query=';
+#my @channels = ('#security');
+my @channels = ('#tailbot');
 
 my $irc = POE::Component::IRC->spawn( 
-                                     nick => $nickname,
-                                     ircname => $ircname,
-                                     username => $username,
-                                     alias => $alias,
+                                     nick => NICK,
+                                     ircname => IRCNAME,
+                                     username => USERNAME,
+                                     alias => ALIAS,
                                      server => $server,
-                                     plugin_debug => 0,
+                                     plugin_debug => 1,
                                      debug => 0,
                                     ) or die "Oh noooo! $!";
 
@@ -54,12 +59,13 @@ sub _start {
   # Initialize plugins
   $irc->plugin_add('UriFind' => POE::Component::IRC::Plugin::URI::Find->new);
   $irc->plugin_add('GoogleCalc' => POE::Component::IRC::Plugin::Google::Calculator->new(
-                              trigger          => qr/^!calc\s+(?=\S)/i,
-                              addressed        => 0,
-                              listen_for_input => [ qw(public notice privmsg) ],
+     trigger          => qr/^!calc\s+(?=\S)/i,
+     addressed        => 0,
+     listen_for_input => [ qw(public notice privmsg) ],
   ));
+
   $irc->yield( register => 'all' );
-  $irc->yield( connect => { } );
+  $irc->yield( connect => {} );
   return;
 }
 
@@ -81,6 +87,7 @@ sub irc_join {
 
   if ($nick ne $irc->nick_name()) {
     $nick= decode("euc-kr", $nick);
+    print STDOUT "$nick is joined.\n";
     $irc->yield( privmsg => $channel => $nick . " : Hello" );
   }
   return;
@@ -96,6 +103,7 @@ sub irc_public {
 
     if ($command eq 'map') {
       my $address=$naver_map_url . URI::Escape::uri_escape($desc);
+      print STDOUT ":Requester $nick -> :Map " . Encode::decode("euc-kr", $desc) . "\n";
       $irc->yield(privmsg => $channel => $address);
     }
 
@@ -107,10 +115,13 @@ sub irc_public {
 
 sub irc_urifind_uri {
   my ($who, $channel, $url, $obj, $msg) = @_[ARG0 .. ARG4];
+  my $nick = ( split /!/, $who )[0];
 
   my $ua=LWP::UserAgent->new;
   $ua->agent("Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1");
-  
+
+  #print STDOUT Dumper($obj);
+  print STDOUT ":Requester $nick -> :Visit $url\n";
   my $response = $ua->get($url);
   if ($response->is_success) {
     my $title = $response->header('Title');
@@ -120,7 +131,6 @@ sub irc_urifind_uri {
 
   return;
 }
-
 
 sub _default {
   my ($event, $args) = @_[ARG0 .. $#_];
