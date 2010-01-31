@@ -18,8 +18,10 @@ define_alias( qr/ks_c_5601-1987$/i     => '"cp949"');
 
 binmode STDOUT, ":utf8";
 
-my $nickname = 'Bot';
-my $ircname = 'Bot';
+my $nickname = 'toad';
+my $ircname = 'toad';
+my $username = 'toad';
+my $alias = 'frog';
 my $server = 'irc.hanirc.org';
 my @channels = ('#security');
 #my @channels = ('#test');
@@ -28,7 +30,10 @@ my $naver_map_url = 'http://map.naver.com/?query=';
 my $irc = POE::Component::IRC->spawn( 
                                      nick => $nickname,
                                      ircname => $ircname,
+                                     username => $username,
+                                     alias => $alias,
                                      server => $server,
+                                     plugin_debug => 0,
                                      debug => 0,
                                     ) or die "Oh noooo! $!";
 
@@ -49,10 +54,10 @@ sub _start {
   # Initialize plugins
   $irc->plugin_add('UriFind' => POE::Component::IRC::Plugin::URI::Find->new);
   $irc->plugin_add('GoogleCalc' => POE::Component::IRC::Plugin::Google::Calculator->new(
-                                                                                        trigger          => qr/^!calc\s+(?=\S)/i,
-                                                                                        addressed        => 0,
-                                                                                        listen_for_input => [ qw(public notice privmsg) ],
-                                                                                       ));
+                              trigger          => qr/^!calc\s+(?=\S)/i,
+                              addressed        => 0,
+                              listen_for_input => [ qw(public notice privmsg) ],
+  ));
   $irc->yield( register => 'all' );
   $irc->yield( connect => { } );
   return;
@@ -94,39 +99,8 @@ sub irc_public {
       $irc->yield(privmsg => $channel => $address);
     }
 
-    if ($command eq 'perl') {
-      my $paste = WWW::Pastebin::PastebinCom::Create->new;
-      $irc->yield(privmsg => $channel => $nick => "please send your file with dcc send\n");
-      $paste->paste(text => "$desc",
-                format => 'perl',
-                poster => "$nick",
-                expiry => 'm',
-               ) or die "Error: " . $paste->error;
-      $irc->yield(privmsg => $channel=> $nick => "Your paste can be found on $paste\n");
-    }
+    # add new commands
   }
-
-  return;
-}
-
-sub irc_dcc_request {
-  my ($user, $type, $port, $cookie, $file, $size, $addr) = @_[ARG0..$#_];
-  return if $type ne 'SEND';
-
-  my $irc = $_[SENDER]->get_heap();
-  my $nick = (split /!/, $user)[0];
-
-  print "==> $nick send me $file ($size bytes) from $addr:$port\n";
-  $irc->yield(dcc_accept => $cookie);
-
-  return;
-}
-
-sub irc_dcc_done {
-  my ($nick, $type, $file, $size) = @_[ARG1, ARG2, ARG4, ARG5];
-  print "==> DCC $type ($file $size) done.\n";
-
-  my $irc = $_[SENDER]->get_heap();
 
   return;
 }
