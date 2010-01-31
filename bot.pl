@@ -10,11 +10,12 @@ use encoding 'utf8';
 use Data::Dumper;
 
 use POE qw(
-Component::IRC 
-Component::IRC::Plugin::URI::Find 
-Component::IRC::Plugin::Google::Calculator 
-);
+            Component::IRC 
+            Component::IRC::Plugin::URI::Find 
+            Component::IRC::Plugin::Google::Calculator
+         );
 
+use POE::Component::IRC::Plugin::Google::Calculator;
 define_alias( qr/65001/ => '"utf-8"' );
 define_alias( qr/(?:x-)?uhc$/i => '"cp949"');
 define_alias( qr/(?:x-)?windows-949$/i => '"cp949"');
@@ -29,22 +30,32 @@ use constant ALIAS => 'frog';
 
 my $server = 'irc.hanirc.org';
 my $naver_map_url = 'http://map.naver.com/?query=';
-#my @channels = ('#security');
-my @channels = ('#tailbot');
+my @channels = ('#security');
+#my @channels = ('#tailbot');
 
+$| = 1;
 my $irc = POE::Component::IRC->spawn( 
                                      nick => NICK,
                                      ircname => IRCNAME,
                                      username => USERNAME,
                                      alias => ALIAS,
                                      server => $server,
-                                     plugin_debug => 1,
+                                     plugin_debug => 0,
                                      debug => 0,
                                     ) or die "Oh noooo! $!";
 
 POE::Session->create(
                      package_states => [
-                                        main => [ qw(_default _start irc_001 irc_join irc_public irc_urifind_uri) ],
+                                        main => [ qw(
+                                                      _default 
+                                                      _start 
+                                                      irc_001 
+                                                      irc_join 
+                                                      irc_public 
+                                                      irc_urifind_uri 
+                                                      irc_google_calculator
+                                                   ) 
+                                                ],
                                        ],
                      heap => { irc => $irc },
                     );
@@ -59,10 +70,13 @@ sub _start {
   # Initialize plugins
   $irc->plugin_add('UriFind' => POE::Component::IRC::Plugin::URI::Find->new);
   $irc->plugin_add('GoogleCalc' => POE::Component::IRC::Plugin::Google::Calculator->new(
-     trigger          => qr/^!calc\s+(?=\S)/i,
-     addressed        => 0,
-     listen_for_input => [ qw(public notice privmsg) ],
-  ));
+                   trigger          => qr/^!calc\s+(?=\S)/i,
+                   addressed        => 0,
+                   auto             => 1,
+                   debug            => 0,
+                   response_event   => 'irc_google_calculator',
+                   listen_for_input => [ qw(public notice privmsg) ],
+                  ));
 
   $irc->yield( register => 'all' );
   $irc->yield( connect => {} );
@@ -128,6 +142,20 @@ sub irc_urifind_uri {
     $title = encode('cp949', $title);
     $irc->yield(notice => $channel => $title);
   } 
+
+  return;
+}
+
+sub irc_google_calculator {
+  my $href = $_[ARG0];
+  my $who = $href->{'who'};
+  my $nick = ( split /!/, $who )[0];
+  my $channel = $href->{'channel'};
+  my $result = $href->{'result'};
+
+  #print STDOUT Dumper($href);
+  print STDOUT ":Requester $nick :Channel $channel :Result $result\n";
+  $irc->yield(privmsg => $channel => $nick . " $result\n");
 
   return;
 }
