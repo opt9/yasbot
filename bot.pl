@@ -29,6 +29,7 @@ use constant NICK => 'toad';
 use constant IRCNAME => 'toad';
 use constant USERNAME => 'toad';
 use constant ALIAS => 'frog';
+use constant IRCLOG => $ENV{"HOME"} . '/log/ircbot/';
 
 my $server = 'irc.hanirc.org';
 my $naver_map_url = 'http://map.naver.com/?query=';
@@ -80,7 +81,7 @@ sub _start {
                                                                                         listen_for_input => [ qw(public notice privmsg) ],
                                                                                        ));
   $irc->plugin_add('Logger', POE::Component::IRC::Plugin::Logger->new(
-                                                                      Path    => '/home/swbae/log/ircbot/',
+                                                                      Path    => IRCLOG,
                                                                       DCC     => 0,
                                                                       Private => 0,
                                                                       Public  => 1,
