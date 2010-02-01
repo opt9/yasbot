@@ -11,8 +11,10 @@ use Data::Dumper;
 
 use POE qw(
             Component::IRC 
+            Component::IRC::State
             Component::IRC::Plugin::URI::Find 
             Component::IRC::Plugin::Google::Calculator
+            Component::IRC::Plugin::Logger
          );
 
 use POE::Component::IRC::Plugin::Google::Calculator;
@@ -77,6 +79,16 @@ sub _start {
                    response_event   => 'irc_google_calculator',
                    listen_for_input => [ qw(public notice privmsg) ],
                   ));
+  $irc->plugin_add('Logger', POE::Component::IRC::Plugin::Logger->new(
+                   Path    => '/home/swbae/log/ircbot/',
+                   DCC     => 0,
+                   Private => 0,
+                   Public  => 1,
+                   Notices => 1,
+                   Sort_by_date => 1,
+                   Strip_color => 0,
+                   Strip_formatting => 0,
+                  ));
 
   $irc->yield( register => 'all' );
   $irc->yield( connect => {} );
@@ -111,7 +123,7 @@ sub irc_public {
   my ($sender, $who, $where, $what) = @_[SENDER, ARG0 .. ARG2];
   my $nick = ( split /!/, $who )[0];
   my $channel = $where->[0];
-  
+
   if ($what =~ /^!([a-z0-9]+)\s?(.*?)?$/) {
     my ($command, $desc)=($1, $2);
 
