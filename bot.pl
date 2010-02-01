@@ -72,23 +72,23 @@ sub _start {
   # Initialize plugins
   $irc->plugin_add('UriFind' => POE::Component::IRC::Plugin::URI::Find->new);
   $irc->plugin_add('GoogleCalc' => POE::Component::IRC::Plugin::Google::Calculator->new(
-                   trigger          => qr/^!calc\s+(?=\S)/i,
-                   addressed        => 0,
-                   auto             => 1,
-                   debug            => 0,
-                   response_event   => 'irc_google_calculator',
-                   listen_for_input => [ qw(public notice privmsg) ],
-                  ));
+                                                                                        trigger          => qr/^!calc\s+(?=\S)/i,
+                                                                                        addressed        => 0,
+                                                                                        auto             => 1,
+                                                                                        debug            => 0,
+                                                                                        response_event   => 'irc_google_calculator',
+                                                                                        listen_for_input => [ qw(public notice privmsg) ],
+                                                                                       ));
   $irc->plugin_add('Logger', POE::Component::IRC::Plugin::Logger->new(
-                   Path    => '/home/swbae/log/ircbot/',
-                   DCC     => 0,
-                   Private => 0,
-                   Public  => 1,
-                   Notices => 1,
-                   Sort_by_date => 1,
-                   Strip_color => 0,
-                   Strip_formatting => 0,
-                  ));
+                                                                      Path    => '/home/swbae/log/ircbot/',
+                                                                      DCC     => 0,
+                                                                      Private => 0,
+                                                                      Public  => 1,
+                                                                      Notices => 1,
+                                                                      Sort_by_date => 1,
+                                                                      Strip_color => 1,
+                                                                      Strip_formatting => 1,
+                                                                     ));
 
   $irc->yield( register => 'all' );
   $irc->yield( connect => {} );
@@ -155,7 +155,7 @@ sub irc_urifind_uri {
     $title = decode("$encoding", $title);
     print STDOUT ":Title $title\n";
     $irc->yield(notice => $channel => $title);
-  }  else {
+  } else {
     print STDOUT ":Connection $url error: $!\n";
   }
 
