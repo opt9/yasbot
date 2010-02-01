@@ -60,8 +60,8 @@ POE::Session->create(
                      heap => { irc => $irc },
                     );
 
-$poe_kernel->run();
-exit 0;
+POE::Kernel->run();
+exit;
 
 sub _start {
   my $heap = $_[HEAP];
@@ -138,10 +138,14 @@ sub irc_urifind_uri {
   print STDOUT ":Requester $nick -> :Visit $url\n";
   my $response = $ua->get($url);
   if ($response->is_success) {
+    my $encoding = $response->content_type_charset;
     my $title = $response->header('Title');
-    $title = encode('cp949', $title);
+    $title = decode("$encoding", $title);
+    print STDOUT ":Title $title\n";
     $irc->yield(notice => $channel => $title);
-  } 
+  }  else {
+    print STDOUT ":Connection $url error: $!\n";
+  }
 
   return;
 }
