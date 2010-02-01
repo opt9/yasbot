@@ -12,6 +12,7 @@ use Data::Dumper;
 use POE qw(
             Component::IRC 
             Component::IRC::State
+            Component::IRC::Plugin::RSS::Headlines
             Component::IRC::Plugin::URI::Find 
             Component::IRC::Plugin::Google::Calculator
             Component::IRC::Plugin::Logger
@@ -31,6 +32,9 @@ use constant USERNAME => 'toad';
 use constant ALIAS => 'frog';
 use constant IRCLOG => $ENV{"HOME"} . '/log/ircbot/';
 
+#my $planet_lisp_rss = 'http://planet.lisp.org/rss20.xml';
+my $bugtrack_rss = 'http://www.securityfocus.com/rss/vulnerabilities.xml';
+my $hns_rss = 'http://feeds2.feedburner.com/HelpNetSecurity';
 my $server = 'irc.hanirc.org';
 my $naver_map_url = 'http://map.naver.com/?query=';
 my @channels = ('#security');
@@ -45,6 +49,7 @@ my $irc = POE::Component::IRC->spawn(
                                      server => $server,
                                      plugin_debug => 0,
                                      debug => 0,
+                                     options => { trace => 0 },
                                     ) or die "Oh noooo! $!";
 
 POE::Session->create(
@@ -57,6 +62,7 @@ POE::Session->create(
                                                       irc_public 
                                                       irc_urifind_uri 
                                                       irc_google_calculator
+                                                      irc_rssheadlines_items
                                                    ) 
                                                 ],
                                        ],
@@ -72,6 +78,7 @@ sub _start {
 
   # Initialize plugins
   $irc->plugin_add('UriFind' => POE::Component::IRC::Plugin::URI::Find->new);
+  $irc->plugin_add('RSSHead' => POE::Component::IRC::Plugin::RSS::Headlines->new);
   $irc->plugin_add('GoogleCalc' => POE::Component::IRC::Plugin::Google::Calculator->new(
                                                                                         trigger          => qr/^!calc\s+(?=\S)/i,
                                                                                         addressed        => 0,
@@ -90,6 +97,7 @@ sub _start {
                                                                       Strip_color => 1,
                                                                       Strip_formatting => 1,
                                                                      ));
+
 
   $irc->yield( register => 'all' );
   $irc->yield( connect => {} );
@@ -117,11 +125,12 @@ sub irc_join {
     print STDOUT "$nick is joined.\n";
     $irc->yield( privmsg => $channel => $nick . " : Hello" );
   }
+
   return;
 }
 
 sub irc_public {
-  my ($sender, $who, $where, $what) = @_[SENDER, ARG0 .. ARG2];
+  my ($kernel, $sender, $who, $where, $what) = @_[KERNEL, SENDER, ARG0 .. ARG2];
   my $nick = ( split /!/, $who )[0];
   my $channel = $where->[0];
 
@@ -134,6 +143,12 @@ sub irc_public {
       $irc->yield(privmsg => $channel => $address);
     }
 
+    if ($command eq 'bt') {
+      $kernel->yield('get_headline', { url => $bugtrack_rss, _channel => $channel });
+    }
+    if ($command eq 'hns') {
+      $kernel->yield('get_headline', { url => $hns_rss, _channel => $channel });
+    }
     # add new commands
   }
 
@@ -173,6 +188,21 @@ sub irc_google_calculator {
   #print STDOUT Dumper($href);
   print STDOUT ":Requester $nick :Channel $channel :Result $result\n";
   $irc->yield(privmsg => $channel => $nick . " $result\n");
+
+  return;
+}
+
+sub irc_rssheadlines_items {
+  my ($sender,$args) = @_[SENDER,ARG0];
+  my $channel = delete $args->{_channel};
+  #$irc->yield(privmsg => $channel => join('\n', @_[ARG1..$#_]));
+  my $count = 0;
+  foreach my $item (@_[ARG1..$#_]) {
+    if ($count < 3) {
+      $irc->yield(privmsg => $channel => $item);
+    }
+    $count++;
+  }
 
   return;
 }
