@@ -14,6 +14,7 @@ use POE qw(
             Component::IRC 
             Component::IRC::State
             Component::IRC::Plugin::RSS::Headlines
+            Component::IRC::Plugin::Atom::Headlines
             Component::IRC::Plugin::URI::Find 
             Component::IRC::Plugin::Google::Calculator
             Component::IRC::Plugin::Logger
@@ -37,6 +38,7 @@ Readonly my $rss_max_count => 3; # how many items to print
 Readonly my $bugtrack_rss => 'http://www.securityfocus.com/rss/vulnerabilities.xml';
 Readonly my $hns_rss => 'http://feeds2.feedburner.com/HelpNetSecurity';
 Readonly my $handlers_diary_rss => 'http://isc.sans.org/rssfeed.xml';
+Readonly my $planet_perl_atom => 'http://planet.perl.org/atom.xml';
 
 Readonly my $server => 'irc.hanirc.org';
 Readonly my $naver_map_url => 'http://map.naver.com/?query=';
@@ -66,6 +68,7 @@ POE::Session->create(
                                                       irc_urifind_uri 
                                                       irc_google_calculator
                                                       irc_rssheadlines_items
+                                                      irc_atomheadlines_items
                                                    ) 
                                                 ],
                                        ],
@@ -82,6 +85,7 @@ sub _start {
   # Initialize plugins
   $irc->plugin_add('UriFind' => POE::Component::IRC::Plugin::URI::Find->new);
   $irc->plugin_add('RSSHead' => POE::Component::IRC::Plugin::RSS::Headlines->new);
+  $irc->plugin_add('AtomHead' => POE::Component::IRC::Plugin::Atom::Headlines->new);
   $irc->plugin_add('GoogleCalc' => POE::Component::IRC::Plugin::Google::Calculator->new(
                                                                                         trigger          => qr/^!calc\s+(?=\S)/i,
                                                                                         addressed        => 0,
@@ -155,6 +159,9 @@ sub irc_public {
     if ($command eq 'sans') {
       $kernel->yield('get_headline', { url => $handlers_diary_rss, _channel => $channel });
     }
+    if ($command eq 'pp') {
+      $kernel->yield('get_atom_headline', { url => $planet_perl_atom, _channel => $channel });
+    }
     # add new commands
   }
 
@@ -203,6 +210,21 @@ sub irc_rssheadlines_items {
   my ($sender,$args) = @_[SENDER,ARG0];
   my $channel = delete $args->{_channel};
   #$irc->yield(privmsg => $channel => join('\n', @_[ARG1..$#_]));
+  my $count = 0;
+  foreach my $item (@_[ARG1..$#_]) {
+    if ($count < $rss_max_count) {
+      $irc->yield(privmsg => $channel => $item);
+    }
+    $count++;
+  }
+
+  return;
+}
+
+sub irc_atomheadlines_items {
+  my ($sender,$args) = @_[SENDER,ARG0];
+  my $channel = delete $args->{_channel};
+  #  $irc->yield(privmsg => $channel => join('\n', @_[ARG1..$#_]));
   my $count = 0;
   foreach my $item (@_[ARG1..$#_]) {
     if ($count < $rss_max_count) {
