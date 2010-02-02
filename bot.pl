@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 
+use Readonly;
 use LWP::Simple;
 use Encode;
 use Encode::Alias;
@@ -32,13 +33,14 @@ use constant USERNAME => 'toad';
 use constant ALIAS => 'frog';
 use constant IRCLOG => $ENV{"HOME"} . '/log/ircbot/';
 
-#my $planet_lisp_rss = 'http://planet.lisp.org/rss20.xml';
-my $bugtrack_rss = 'http://www.securityfocus.com/rss/vulnerabilities.xml';
-my $hns_rss = 'http://feeds2.feedburner.com/HelpNetSecurity';
-my $server = 'irc.hanirc.org';
-my $naver_map_url = 'http://map.naver.com/?query=';
-my @channels = ('#security');
-#my @channels = ('#tailbot');
+Readonly my $rss_max_count => 3; # how many items to print
+Readonly my $bugtrack_rss => 'http://www.securityfocus.com/rss/vulnerabilities.xml';
+Readonly my $hns_rss => 'http://feeds2.feedburner.com/HelpNetSecurity';
+
+Readonly my $server => 'irc.hanirc.org';
+Readonly my $naver_map_url => 'http://map.naver.com/?query=';
+Readonly my @channels => ('#security');
+#Readonly my @channels => ('#tailbot');
 
 $| = 1;
 my $irc = POE::Component::IRC->spawn( 
@@ -48,8 +50,8 @@ my $irc = POE::Component::IRC->spawn(
                                      alias => ALIAS,
                                      server => $server,
                                      plugin_debug => 0,
-                                     debug => 0,
-                                     options => { trace => 0 },
+                                     debug => 1,
+                                     options => { trace => 1 },
                                     ) or die "Oh noooo! $!";
 
 POE::Session->create(
@@ -166,11 +168,12 @@ sub irc_urifind_uri {
   print STDOUT ":Requester $nick -> :Visit $url\n";
   my $response = $ua->get($url);
   if ($response->is_success) {
-    my $encoding = $response->content_type_charset;
     my $title = $response->header('Title');
-    $title = decode("$encoding", $title);
+    my $encoding = $response->content_type_charset;
+    $encoding = 'utf-8' unless $encoding; # it's null on some sites
+    $title = encode("euc-kr", decode("$encoding", $title));
     print STDOUT ":Title $title\n";
-    $irc->yield(notice => $channel => $title);
+    $irc->yield(privmsg => $channel => $title);
   } else {
     print STDOUT ":Connection $url error: $!\n";
   }
@@ -198,7 +201,7 @@ sub irc_rssheadlines_items {
   #$irc->yield(privmsg => $channel => join('\n', @_[ARG1..$#_]));
   my $count = 0;
   foreach my $item (@_[ARG1..$#_]) {
-    if ($count < 3) {
+    if ($count < $rss_max_count) {
       $irc->yield(privmsg => $channel => $item);
     }
     $count++;
@@ -208,17 +211,17 @@ sub irc_rssheadlines_items {
 }
 
 sub _default {
-  my ($event, $args) = @_[ARG0 .. $#_];
-  my @output = ( "$event: " );
+#   my ($event, $args) = @_[ARG0 .. $#_];
+#   my @output = ( "$event: " );
 
-  for my $arg (@$args) {
-    $arg = decode('euc-kr', $arg);
-    if ( ref $arg eq 'ARRAY' ) {
-      push( @output, '[' . join(', ', @$arg ) . ']' );
-    } else {
-      push ( @output, "'$arg'" );
-    }
-  }
-  print join ' ', @output, "\n";
+#   for my $arg (@$args) {
+#     $arg = decode('euc-kr', $arg);
+#     if ( ref $arg eq 'ARRAY' ) {
+#       push( @output, '[' . join(', ', @$arg ) . ']' );
+#     } else {
+#       push ( @output, "'$arg'" );
+#     }
+#   }
+#   print join ' ', @output, "\n";
   return 0;
 }
