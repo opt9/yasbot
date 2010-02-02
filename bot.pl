@@ -36,6 +36,7 @@ use constant IRCLOG => $ENV{"HOME"} . '/log/ircbot/';
 Readonly my $rss_max_count => 3; # how many items to print
 Readonly my $bugtrack_rss => 'http://www.securityfocus.com/rss/vulnerabilities.xml';
 Readonly my $hns_rss => 'http://feeds2.feedburner.com/HelpNetSecurity';
+Readonly my $handlers_diary_rss => 'http://isc.sans.org/rssfeed.xml';
 
 Readonly my $server => 'irc.hanirc.org';
 Readonly my $naver_map_url => 'http://map.naver.com/?query=';
@@ -150,6 +151,9 @@ sub irc_public {
     }
     if ($command eq 'hns') {
       $kernel->yield('get_headline', { url => $hns_rss, _channel => $channel });
+    }
+    if ($command eq 'sans') {
+      $kernel->yield('get_headline', { url => $handlers_diary_rss, _channel => $channel });
     }
     # add new commands
   }
