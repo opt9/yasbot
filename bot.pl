@@ -38,7 +38,9 @@ Readonly my $rss_max_count => 3; # how many items to print
 Readonly my $bugtrack_rss => 'http://www.securityfocus.com/rss/vulnerabilities.xml';
 Readonly my $hns_rss => 'http://feeds2.feedburner.com/HelpNetSecurity';
 Readonly my $handlers_diary_rss => 'http://isc.sans.org/rssfeed.xml';
+Readonly my $planet_lisp_rss => 'http://planet.lisp.org/rss20.xml';
 Readonly my $planet_perl_atom => 'http://planet.perl.org/atom.xml';
+Readonly my $planet_emacsen_atom => 'http://planet.emacsen.org/atom.xml';
 
 Readonly my $server => 'irc.hanirc.org';
 Readonly my $naver_map_url => 'http://map.naver.com/?query=';
@@ -159,8 +161,14 @@ sub irc_public {
     if ($command eq 'sans') {
       $kernel->yield('get_headline', { url => $handlers_diary_rss, _channel => $channel });
     }
+    if ($command eq 'pl') {
+      $kernel->yield('get_headline', { url => $planet_lisp_rss, _channel => $channel });
+    }
     if ($command eq 'pp') {
       $kernel->yield('get_atom_headline', { url => $planet_perl_atom, _channel => $channel });
+    }
+    if ($command eq 'pe') {
+      $kernel->yield('get_atom_headline', { url => $planet_emacsen_atom, _channel => $channel });
     }
     # add new commands
   }
@@ -180,8 +188,10 @@ sub irc_urifind_uri {
   my $response = $ua->get($url);
   if ($response->is_success) {
     my $title = $response->header('Title');
-    my $encoding = $response->content_type_charset;
-    $encoding = 'utf-8' unless $encoding; # it's null on some sites
+    #my $encoding = $response->content_type_charset;
+    my $encoding = $response->content_charset;
+    print STDOUT "$encoding\n";
+    #$encoding = 'euc-kr' unless $encoding; # it's null on some sites
     $title = encode("euc-kr", decode("$encoding", $title));
     print STDOUT ":Title $title\n";
     $irc->yield(privmsg => $channel => $title);
